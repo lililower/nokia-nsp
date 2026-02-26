@@ -68,10 +68,33 @@ nokia-nsp/
 
 ## Quick Start
 
-### 1. Clone and install
+### Option A: Docker (Recommended)
 
 ```bash
-git clone https://github.com/yourusername/nokia-nsp.git
+docker run -d -p 8000:8000 \
+  -e SECRET_KEY=your-secret-key \
+  -e FERNET_KEY=your-fernet-key \
+  -e DEBUG=True \
+  -e DATABASE_DIR=/app/data \
+  -v nokia-nsp-data:/app/data \
+  lililower/nokia-nsp:latest
+```
+
+Or with docker-compose:
+
+```bash
+curl -O https://raw.githubusercontent.com/lililower/nokia-nsp/master/docker-compose.yml
+docker compose up -d
+```
+
+Open `http://localhost:8000` - default login: **admin / admin123**
+
+### Option B: Local Development
+
+#### 1. Clone and install
+
+```bash
+git clone https://github.com/lililower/nokia-nsp.git
 cd nokia-nsp
 python -m pip install -r requirements.txt
 ```

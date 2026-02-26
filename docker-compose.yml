@@ -1,0 +1,16 @@
+services:
+  web:
+    image: lililower/nokia-nsp:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=change-me-in-production
+      - DEBUG=True
+      - FERNET_KEY=change-me-generate-a-real-key
+      - DATABASE_DIR=/app/data
+    volumes:
+      - db_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  db_data:
