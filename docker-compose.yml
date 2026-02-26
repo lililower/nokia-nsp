@@ -1,6 +1,6 @@
 services:
   web:
-    image: lililower/nokia-nsp:latest
+    image: liorsolet729/nokia-nsp:latest
     ports:
       - "8000:8000"
     environment:

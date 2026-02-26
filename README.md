@@ -77,13 +77,13 @@ docker run -d -p 8000:8000 \
   -e DEBUG=True \
   -e DATABASE_DIR=/app/data \
   -v nokia-nsp-data:/app/data \
-  lililower/nokia-nsp:latest
+  liorsolet729/nokia-nsp:latest
 ```
 
 Or with docker-compose:
 
 ```bash
-curl -O https://raw.githubusercontent.com/lililower/nokia-nsp/master/docker-compose.yml
+curl -O https://raw.githubusercontent.com/liorsolet729/nokia-nsp/master/docker-compose.yml
 docker compose up -d
 ```
 
@@ -94,7 +94,7 @@ Open `http://localhost:8000` - default login: **admin / admin123**
 #### 1. Clone and install
 
 ```bash
-git clone https://github.com/lililower/nokia-nsp.git
+git clone https://github.com/liorsolet729/nokia-nsp.git
 cd nokia-nsp
 python -m pip install -r requirements.txt
 ```

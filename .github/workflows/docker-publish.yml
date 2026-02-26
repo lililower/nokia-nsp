@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE: lililower/nokia-nsp
+  DOCKER_IMAGE: liorsolet729/nokia-nsp
 
 jobs:
   build-and-push:
