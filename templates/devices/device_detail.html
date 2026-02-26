@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}{{ device.name }} - Nokia NSP{% endblock %}
+{% block page_title %}Device: {{ device.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-router me-2"></i>{{ device.name }}</h5>
+        {% if device.status == 'online' %}
+        <span class="badge bg-success">Online</span>
+        {% elif device.status == 'offline' %}
+        <span class="badge bg-danger">Offline</span>
+        {% else %}
+        <span class="badge bg-secondary">Unknown</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <table class="table table-borderless">
+          <tr><th style="width:150px;">Hostname</th><td><code>{{ device.hostname }}</code></td></tr>
+          <tr><th>Port</th><td>{{ device.port }}</td></tr>
+          <tr><th>Username</th><td>{{ device.username }}</td></tr>
+          <tr><th>Platform</th><td>{{ device.platform }}</td></tr>
+          <tr><th>SW Version</th><td>{{ device.sw_version|default:"-" }}</td></tr>
+          <tr><th>Created</th><td>{{ device.created_at|date:"N j, Y H:i" }}</td></tr>
+          <tr><th>Updated</th><td>{{ device.updated_at|date:"N j, Y H:i" }}</td></tr>
+          {% if device.notes %}<tr><th>Notes</th><td>{{ device.notes }}</td></tr>{% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Actions</h6></div>
+      <div class="card-body d-grid gap-2">
+        {% if user.role != 'viewer' %}
+        <button class="btn btn-outline-success test-btn" data-url="{% url 'device_test' device.pk %}">
+          <i class="bi bi-plug me-1"></i>Test Connectivity
+        </button>
+        <a href="{% url 'device_edit' device.pk %}" class="btn btn-outline-primary">
+          <i class="bi bi-pencil me-1"></i>Edit Device
+        </a>
+        {% endif %}
+        {% if user.role == 'admin' %}
+        <a href="{% url 'device_delete' device.pk %}" class="btn btn-outline-danger">
+          <i class="bi bi-trash me-1"></i>Delete Device
+        </a>
+        {% endif %}
+        <a href="{% url 'device_list' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Back to List
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  $('.test-btn').click(function() {
+    var btn = $(this);
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Testing...');
+    $.post(btn.data('url'), {csrfmiddlewaretoken: '{{ csrf_token }}'}, function(data) {
+      if (data.status === 'success') {
+        location.reload();
+      } else {
+        alert('Test failed: ' + data.message);
+        btn.prop('disabled', false).html('<i class="bi bi-plug me-1"></i>Test Connectivity');
+      }
+    }).fail(function() {
+      alert('Connection test failed.');
+      btn.prop('disabled', false).html('<i class="bi bi-plug me-1"></i>Test Connectivity');
+    });
+  });
+});
+</script>
+{% endblock %}

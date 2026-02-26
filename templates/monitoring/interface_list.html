@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Interfaces - Nokia NSP{% endblock %}
+{% block page_title %}Interfaces{% endblock %}
+
+{% block content %}
+<!-- Device Selector -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label for="device" class="form-label">Select Device</label>
+        <select name="device" id="device" class="form-select" onchange="this.form.submit()">
+          <option value="">-- Select a device --</option>
+          {% for d in devices %}
+          <option value="{{ d.pk }}" {% if selected_device_id == d.pk|stringformat:"d" %}selected{% endif %}>
+            {{ d.name }} ({{ d.hostname }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+  <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+</div>
+{% endif %}
+
+{% if selected_device_id %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h6 class="mb-0"><i class="bi bi-ethernet me-2"></i>Interfaces
+      <span class="badge bg-primary ms-2">{{ interfaces|length }}</span>
+    </h6>
+  </div>
+  <div class="card-body p-0">
+    <table id="iface-table" class="table table-hover table-striped mb-0" style="width:100%">
+      <thead class="table-light">
+        <tr>
+          <th>Port</th>
+          <th>Description</th>
+          <th>Admin Status</th>
+          <th>Oper Status</th>
+          <th>Speed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for iface in interfaces %}
+        <tr>
+          <td><code>{{ iface.name }}</code></td>
+          <td>{{ iface.description }}</td>
+          <td>
+            {% if iface.admin_status == 'enable' or iface.admin_status == 'up' %}
+              <span class="badge bg-success">Up</span>
+            {% else %}
+              <span class="badge bg-danger">Down</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if iface.oper_status == 'up' %}
+              <span class="badge bg-success">Up</span>
+            {% else %}
+              <span class="badge bg-danger">Down</span>
+            {% endif %}
+          </td>
+          <td>{{ iface.speed }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-3">No interfaces found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  {% if selected_device_id %}
+  if (!$('#iface-table tbody tr td[colspan]').length) {
+    $('#iface-table').DataTable({
+      pageLength: 25,
+      order: [[0, 'asc']],
+      language: { search: "Filter:" }
+    });
+  }
+  {% endif %}
+});
+</script>
+{% endblock %}

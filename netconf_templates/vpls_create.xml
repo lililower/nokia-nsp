@@ -1,0 +1,18 @@
+<config>
+  <configure xmlns="urn:nokia.com:sros:ns:yang:sr:conf">
+    <service>
+      <vpls>
+        <service-name>{{service_name}}</service-name>
+        <service-id>{{service_id}}</service-id>
+        <customer>{{customer_id}}</customer>
+        <description>{{description}}</description>
+        {% for sap in saps %}
+        <sap>
+          <sap-id>{{sap.port}}:{{sap.vlan}}</sap-id>
+        </sap>
+        {% endfor %}
+        <admin-state>enable</admin-state>
+      </vpls>
+    </service>
+  </configure>
+</config>

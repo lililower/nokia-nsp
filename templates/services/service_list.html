@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}VPLS Services - Nokia NSP{% endblock %}
+{% block page_title %}VPLS Services{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Services</h5>
+  {% if user.is_operator %}
+  <a href="{% url 'service_create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Create Service
+  </a>
+  {% endif %}
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <table id="service-table" class="table table-hover mb-0" style="width:100%">
+      <thead class="table-light">
+        <tr>
+          <th>Service ID</th>
+          <th>Name</th>
+          <th>Customer ID</th>
+          <th>Devices</th>
+          <th>SAPs</th>
+          <th>Status</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for svc in services %}
+        <tr>
+          <td><a href="{% url 'service_detail' svc.pk %}"><strong>{{ svc.service_id }}</strong></a></td>
+          <td>{{ svc.name }}</td>
+          <td>{{ svc.customer_id }}</td>
+          <td>{{ svc.devices.count }}</td>
+          <td>{{ svc.saps.count }}</td>
+          <td>
+            {% if svc.status == 'deployed' %}
+              <span class="badge bg-success">Deployed</span>
+            {% elif svc.status == 'planned' %}
+              <span class="badge bg-warning text-dark">Planned</span>
+            {% elif svc.status == 'failed' %}
+              <span class="badge bg-danger">Failed</span>
+            {% elif svc.status == 'deleted' %}
+              <span class="badge bg-secondary">Deleted</span>
+            {% endif %}
+          </td>
+          <td><small>{{ svc.created_at|date:"Y-m-d H:i" }}</small></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-3">No services created yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  if ($('#service-table tbody tr').length > 0 && !$('#service-table tbody tr td[colspan]').length) {
+    $('#service-table').DataTable({
+      pageLength: 25,
+      order: [[0, 'desc']],
+      language: { search: "Filter:" }
+    });
+  }
+});
+</script>
+{% endblock %}

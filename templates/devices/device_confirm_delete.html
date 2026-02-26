@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ device.name }} - Nokia NSP{% endblock %}
+{% block page_title %}Delete Device{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow-sm border-danger">
+      <div class="card-body text-center">
+        <i class="bi bi-exclamation-triangle text-danger" style="font-size:3rem;"></i>
+        <h5 class="mt-3">Delete "{{ device.name }}"?</h5>
+        <p class="text-muted">
+          This will permanently remove the device <strong>{{ device.name }}</strong> ({{ device.hostname }})
+          and all associated service SAP configurations.
+        </p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-flex justify-content-center gap-2">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash me-1"></i>Yes, Delete
+            </button>
+            <a href="{% url 'device_detail' device.pk %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

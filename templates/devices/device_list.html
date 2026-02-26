@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Devices - Nokia NSP{% endblock %}
+{% block page_title %}Device Inventory{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-router me-2"></i>Devices</h4>
+  {% if user.role != 'viewer' %}
+  <a href="{% url 'device_create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Add Device
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <table class="table table-hover" id="deviceTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Hostname / IP</th>
+          <th>Port</th>
+          <th>Platform</th>
+          <th>SW Version</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for device in devices %}
+        <tr>
+          <td><a href="{% url 'device_detail' device.pk %}">{{ device.name }}</a></td>
+          <td><code>{{ device.hostname }}</code></td>
+          <td>{{ device.port }}</td>
+          <td>{{ device.platform }}</td>
+          <td>{{ device.sw_version|default:"-" }}</td>
+          <td>
+            {% if device.status == 'online' %}
+            <span class="badge bg-success">Online</span>
+            {% elif device.status == 'offline' %}
+            <span class="badge bg-danger">Offline</span>
+            {% else %}
+            <span class="badge bg-secondary">Unknown</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if user.role != 'viewer' %}
+            <button class="btn btn-sm btn-outline-success test-btn" data-url="{% url 'device_test' device.pk %}" title="Test Connectivity">
+              <i class="bi bi-plug"></i>
+            </button>
+            <a href="{% url 'device_edit' device.pk %}" class="btn btn-sm btn-outline-primary" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% endif %}
+            {% if user.role == 'admin' %}
+            <a href="{% url 'device_delete' device.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+              <i class="bi bi-trash"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted">No devices found. Add your first device.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  if (!$('#deviceTable tbody tr td[colspan]').length) {
+    $('#deviceTable').DataTable({
+      pageLength: 25,
+      order: [[0, 'asc']],
+      language: { search: "Filter:" }
+    });
+  }
+
+  $('.test-btn').click(function() {
+    var btn = $(this);
+    var url = btn.data('url');
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+    $.post(url, {csrfmiddlewaretoken: '{{ csrf_token }}'}, function(data) {
+      if (data.status === 'success') {
+        btn.closest('tr').find('.badge').removeClass('bg-danger bg-secondary').addClass('bg-success').text('Online');
+        showToast('success', data.message);
+      } else {
+        btn.closest('tr').find('.badge').removeClass('bg-success bg-secondary').addClass('bg-danger').text('Offline');
+        showToast('danger', data.message);
+      }
+    }).fail(function() {
+      showToast('danger', 'Connection test failed.');
+    }).always(function() {
+      btn.prop('disabled', false).html('<i class="bi bi-plug"></i>');
+    });
+  });
+
+  function showToast(type, msg) {
+    var alert = $('<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
+      msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+    $('.container-fluid').first().prepend(alert);
+    setTimeout(function() { alert.alert('close'); }, 5000);
+  }
+});
+</script>
+{% endblock %}

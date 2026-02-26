@@ -1,0 +1,12 @@
+<config>
+  <configure xmlns="urn:nokia.com:sros:ns:yang:sr:conf">
+    <service>
+      <vpls>
+        <service-id>{{service_id}}</service-id>
+        <sap>
+          <sap-id>{{port}}:{{vlan}}</sap-id>
+        </sap>
+      </vpls>
+    </service>
+  </configure>
+</config>

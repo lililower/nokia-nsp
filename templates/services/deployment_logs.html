@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Deployment Logs - Nokia NSP{% endblock %}
+{% block page_title %}Deployment Logs{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <table id="logs-table" class="table table-hover mb-0" style="width:100%">
+      <thead class="table-light">
+        <tr>
+          <th>Time</th>
+          <th>Service</th>
+          <th>Device</th>
+          <th>Action</th>
+          <th>Status</th>
+          <th>By</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr class="log-row" data-log-id="{{ log.pk }}">
+          <td><small>{{ log.timestamp|date:"Y-m-d H:i:s" }}</small></td>
+          <td><a href="{% url 'service_detail' log.service.pk %}">VPLS {{ log.service.service_id }}</a></td>
+          <td>{{ log.device.name }}</td>
+          <td><span class="text-capitalize">{{ log.action }}</span></td>
+          <td>
+            {% if log.status == 'success' %}
+              <span class="badge bg-success">Success</span>
+            {% else %}
+              <span class="badge bg-danger">Failed</span>
+            {% endif %}
+          </td>
+          <td>{{ log.deployed_by|default:"—" }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary btn-detail">
+              <i class="bi bi-code"></i>
+            </button>
+            <div class="d-none log-detail">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <strong>Config Sent:</strong>
+                  <pre class="bg-dark text-light p-2 rounded small mt-1" style="max-height:200px;overflow:auto">{{ log.config_sent }}</pre>
+                </div>
+                <div class="col-md-6">
+                  <strong>Response:</strong>
+                  <pre class="bg-dark text-light p-2 rounded small mt-1" style="max-height:200px;overflow:auto">{{ log.response }}</pre>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-3">No deployment logs yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  if ($('#logs-table tbody tr td[colspan]').length) return;
+  var table = $('#logs-table').DataTable({
+    pageLength: 25,
+    order: [[0, 'desc']],
+    language: { search: "Filter:" }
+  });
+
+  $('#logs-table').on('click', '.btn-detail', function() {
+    var tr = $(this).closest('tr');
+    var row = table.row(tr);
+    var detailHtml = tr.find('.log-detail').html();
+    if (row.child.isShown()) {
+      row.child.hide();
+      tr.removeClass('table-active');
+    } else {
+      row.child('<td colspan="7">' + detailHtml + '</td>').show();
+      tr.addClass('table-active');
+    }
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}FDB / MAC Table - Nokia NSP{% endblock %}
+{% block page_title %}FDB / MAC Table{% endblock %}
+
+{% block content %}
+<!-- Device Selector -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label for="device" class="form-label">Select Device</label>
+        <select name="device" id="device" class="form-select" onchange="this.form.submit()">
+          <option value="">-- Select a device --</option>
+          {% for d in devices %}
+          <option value="{{ d.pk }}" {% if selected_device_id == d.pk|stringformat:"d" %}selected{% endif %}>
+            {{ d.name }} ({{ d.hostname }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if selected_device_id %}
+      <div class="col-auto">
+        <button type="button" id="btn-refresh" class="btn btn-outline-primary">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+      </div>
+      <div class="col-auto">
+        <a href="{% url 'fdb_export_csv' selected_device_id %}" class="btn btn-outline-success">
+          <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+  <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+</div>
+{% endif %}
+
+{% if selected_device_id %}
+<!-- FDB Table -->
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h6 class="mb-0"><i class="bi bi-table me-2"></i>MAC Address Table
+      <span class="badge bg-primary ms-2" id="entry-count">{{ entries|length }}</span>
+    </h6>
+  </div>
+  <div class="card-body p-0">
+    <table id="fdb-table" class="table table-hover table-striped mb-0" style="width:100%">
+      <thead class="table-light">
+        <tr>
+          <th>MAC Address</th>
+          <th>SAP (Port:VLAN)</th>
+          <th>Interface Description</th>
+          <th>Service ID</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr>
+          <td><code>{{ entry.mac_address }}</code></td>
+          <td>{{ entry.sap }}</td>
+          <td>{{ entry.interface_desc }}</td>
+          <td>{{ entry.service_id }}</td>
+          <td>
+            {% if entry.type == 'learned' %}
+              <span class="badge bg-info">Learned</span>
+            {% elif entry.type == 'static' %}
+              <span class="badge bg-secondary">Static</span>
+            {% else %}
+              <span class="badge bg-light text-dark">{{ entry.type }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-3">No FDB entries found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  {% if selected_device_id %}
+  if (!$('#fdb-table tbody tr td[colspan]').length) {
+    $('#fdb-table').DataTable({
+      pageLength: 25,
+      order: [[0, 'asc']],
+      language: { search: "Filter:" }
+    });
+  }
+
+  $('#btn-refresh').click(function() {
+    var btn = $(this);
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Loading...');
+    $.getJSON("{% url 'fdb_table_ajax' selected_device_id %}", function(data) {
+      if (data.entries) {
+        var table = $('#fdb-table').DataTable();
+        table.clear();
+        data.entries.forEach(function(e) {
+          var typeBadge = e.type === 'learned'
+            ? '<span class="badge bg-info">Learned</span>'
+            : e.type === 'static'
+              ? '<span class="badge bg-secondary">Static</span>'
+              : '<span class="badge bg-light text-dark">' + e.type + '</span>';
+          table.row.add([
+            '<code>' + e.mac_address + '</code>',
+            e.sap,
+            e.interface_desc || '',
+            e.service_id,
+            typeBadge
+          ]);
+        });
+        table.draw();
+        $('#entry-count').text(data.entries.length);
+      }
+    }).fail(function(xhr) {
+      alert('Error refreshing: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
+    }).always(function() {
+      btn.prop('disabled', false).html('<i class="bi bi-arrow-clockwise me-1"></i>Refresh');
+    });
+  });
+  {% endif %}
+});
+</script>
+{% endblock %}

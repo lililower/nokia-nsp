@@ -1,0 +1,10 @@
+<config>
+  <configure xmlns="urn:nokia.com:sros:ns:yang:sr:conf"
+             xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+    <service>
+      <vpls nc:operation="delete">
+        <service-id>{{service_id}}</service-id>
+      </vpls>
+    </service>
+  </configure>
+</config>
