@@ -4,7 +4,7 @@
 {% block page_title %}FDB / MAC Table{% endblock %}
 
 {% block content %}
-<!-- Device Selector -->
+<!-- Device & Service Selector -->
 <div class="card shadow-sm mb-4">
   <div class="card-body">
     <form method="get" class="row g-3 align-items-end">
@@ -20,6 +20,16 @@
         </select>
       </div>
       {% if selected_device_id %}
+      <div class="col-md-3">
+        <label for="service_id" class="form-label">Service ID (optional)</label>
+        <input type="text" name="service_id" id="service_id" class="form-control"
+               placeholder="All services" value="{{ selected_service_id }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-funnel me-1"></i>Filter
+        </button>
+      </div>
       <div class="col-auto">
         <button type="button" id="btn-refresh" class="btn btn-outline-primary">
           <i class="bi bi-arrow-clockwise me-1"></i>Refresh
@@ -41,11 +51,26 @@
 </div>
 {% endif %}
 
+{% if services_found %}
+<div class="alert alert-info py-2">
+  <i class="bi bi-info-circle me-1"></i>
+  VPLS services found on device:
+  {% for sid in services_found %}
+    <a href="?device={{ selected_device_id }}&service_id={{ sid }}" class="badge bg-primary text-decoration-none me-1">{{ sid }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if selected_device_id %}
 <!-- FDB Table -->
 <div class="card shadow-sm">
   <div class="card-header">
     <h6 class="mb-0"><i class="bi bi-table me-2"></i>MAC Address Table
+      {% if selected_service_id %}
+        <span class="text-muted">- Service {{ selected_service_id }}</span>
+      {% else %}
+        <span class="text-muted">- All Services</span>
+      {% endif %}
       <span class="badge bg-primary ms-2" id="entry-count">{{ entries|length }}</span>
     </h6>
   </div>
@@ -101,8 +126,12 @@ $(document).ready(function() {
 
   $('#btn-refresh').click(function() {
     var btn = $(this);
+    var serviceId = $('#service_id').val();
+    var url = "{% url 'fdb_table_ajax' selected_device_id %}";
+    if (serviceId) url += '?service_id=' + encodeURIComponent(serviceId);
+
     btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Loading...');
-    $.getJSON("{% url 'fdb_table_ajax' selected_device_id %}", function(data) {
+    $.getJSON(url, function(data) {
       if (data.entries) {
         var table = $('#fdb-table').DataTable();
         table.clear();

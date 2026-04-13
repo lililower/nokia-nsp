@@ -1,0 +1,622 @@
+================================================================================
+  Nokia SR OS 7750 - CLI Commands Reference
+  Parallel CLI commands for every NETCONF query used by the Nokia NSP App
+================================================================================
+
+  This file maps each NETCONF operation in the app to its equivalent
+  Nokia SR OS classic CLI and/or MD-CLI command, so you can see exactly
+  what data the app is pulling (or pushing) to each device.
+
+  Legend:
+    [READ]   = NETCONF <get> or <get-config> (no changes made)
+    [WRITE]  = NETCONF <edit-config> + <commit> (changes config)
+    Source file listed for each operation.
+
+================================================================================
+
+
+================================================================================
+1. DEVICE CONNECTIVITY TEST
+   Source: apps/devices/views.py -> device_test()
+   NETCONF: Opens a NETCONF session and verifies connection
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  # Simply SSH/NETCONF connectivity check
+  ssh <hostname> -p 830 -s netconf
+
+
+================================================================================
+2. PORT / INTERFACE STATE
+   Source: netconf_lib/nokia_interfaces.py -> get_interfaces()
+   NETCONF: <get> state > port
+   Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show port
+  show port detail
+
+  MD-CLI:
+  -------
+  /show port
+
+
+================================================================================
+3. PORT CONFIGURATION (descriptions, LAG membership, admin state)
+   Source: netconf_lib/nokia_interfaces.py -> _get_port_config()
+   NETCONF: <get-config source="running"> configure > port
+   Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  admin display-config | match "port" context
+  show port description
+
+  MD-CLI:
+  -------
+  /configure port
+  info | match description
+
+
+================================================================================
+4. LLDP NEIGHBORS
+   Source: netconf_lib/nokia_interfaces.py -> get_lldp_neighbors()
+   NETCONF: <get> state > port > ethernet > lldp > remote-system
+   Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show system lldp neighbor
+
+  MD-CLI:
+  -------
+  /show system lldp neighbor
+
+
+================================================================================
+5. LAG CONFIGURATION (descriptions, member ports, mode)
+   Source: netconf_lib/nokia_lag.py -> get_lag_config()
+   NETCONF: <get-config source="running"> configure > lag
+   Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show lag detail
+  show lag description
+  admin display-config | match "lag" context
+
+  MD-CLI:
+  -------
+  /configure lag
+  info
+
+
+================================================================================
+6. LAG OPERATIONAL STATE
+   Source: netconf_lib/nokia_lag.py -> get_lag_state()
+   NETCONF: <get> state > lag
+   Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show lag
+  show lag <lag-id> detail
+  show lag <lag-id> statistics
+
+  MD-CLI:
+  -------
+  /show lag
+
+
+================================================================================
+7. LDP SESSIONS & STATISTICS
+   Source: netconf_lib/nokia_ldp.py -> get_ldp_sessions()
+   NETCONF: <get> state > router "Base" > ldp > session + statistics
+   Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show router ldp session
+  show router ldp session detail
+  show router ldp statistics
+
+  MD-CLI:
+  -------
+  /show router ldp session
+  /show router ldp statistics
+
+
+================================================================================
+8. LDP FEC-TO-LABEL BINDINGS
+   Source: netconf_lib/nokia_ldp.py -> get_ldp_bindings()
+   NETCONF: <get> state > router "Base" > ldp > bindings > active
+   Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show router ldp bindings active
+  show router ldp bindings prefixes active
+
+  MD-CLI:
+  -------
+  /show router ldp bindings active
+
+
+================================================================================
+9. MPLS LSPs (Label Switched Paths)
+   Source: netconf_lib/nokia_mpls.py -> get_mpls_lsps()
+   NETCONF: <get> state > router "Base" > mpls > lsp
+   Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show router mpls lsp
+  show router mpls lsp detail
+  show router mpls lsp path detail
+
+  MD-CLI:
+  -------
+  /show router mpls lsp
+
+
+================================================================================
+10. MPLS TUNNEL TABLE
+    Source: netconf_lib/nokia_mpls.py -> get_mpls_tunnels()
+    NETCONF: <get> state > router "Base" > tunnel-table
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show router tunnel-table
+  show router tunnel-table detail
+
+  MD-CLI:
+  -------
+  /show router tunnel-table
+
+
+================================================================================
+11. MPLS LSP PATH DETAIL (specific LSP)
+    Source: netconf_lib/nokia_mpls.py -> get_lsp_path_detail()
+    NETCONF: <get> state > router "Base" > mpls > lsp > lsp-name <name>
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show router mpls lsp "<lsp-name>" path detail
+
+  MD-CLI:
+  -------
+  /show router mpls lsp "<lsp-name>"
+
+
+================================================================================
+12. BGP PEERS / NEIGHBORS
+    Source: netconf_lib/nokia_routing.py -> get_bgp_peers()
+    NETCONF: <get> state > router "Base" > bgp > neighbor
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show router bgp summary
+  show router bgp neighbor
+  show router bgp neighbor <ip-address> detail
+
+  MD-CLI:
+  -------
+  /show router bgp summary
+  /show router bgp neighbor
+
+
+================================================================================
+13. IPv4 ROUTE TABLE
+    Source: netconf_lib/nokia_routing.py -> get_route_table()
+    NETCONF: <get> state > router "Base" > route-table > unicast > ipv4 > route
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show router route-table
+  show router route-table ipv4
+  show router route-table protocol <protocol>
+
+  MD-CLI:
+  -------
+  /show router route-table
+
+
+================================================================================
+14. SYSTEM INTERFACE IP (Router ID)
+    Source: netconf_lib/nokia_routing.py -> get_system_ip()
+    NETCONF: <get> state > router "Base" > interface "system" > ipv4 > primary
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show router interface "system"
+  show router interface "system" detail
+
+  MD-CLI:
+  -------
+  /show router interface "system"
+
+
+================================================================================
+15. PORT UTILIZATION / STATISTICS
+    Source: netconf_lib/nokia_port_stats.py -> get_port_utilization()
+    NETCONF: <get> state > port  (includes statistics child)
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show port statistics
+  show port <port-id> statistics
+  show port <port-id> detail
+
+  MD-CLI:
+  -------
+  /show port statistics
+
+
+================================================================================
+16. SAP INGRESS/EGRESS STATISTICS
+    Source: netconf_lib/nokia_sap_stats.py -> get_sap_statistics()
+    NETCONF: <get> state > service > vpls > sap > statistics
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show service id <service-id> sap-ingress
+  show service id <service-id> sap-egress
+  show service id <service-id> sap <port:vlan> stats
+
+  MD-CLI:
+  -------
+  /show service id <service-id> sap <sap-id> stats
+
+
+================================================================================
+17. SDP (Service Distribution Points) & BINDINGS
+    Source: netconf_lib/nokia_sdp.py -> get_sdp_list()
+    NETCONF: <get> state > service > sdp
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show service sdp
+  show service sdp detail
+  show service sdp-using
+
+  MD-CLI:
+  -------
+  /show service sdp
+
+
+================================================================================
+18. FDB / MAC ADDRESS TABLE (all services)
+    Source: netconf_lib/nokia_fdb.py -> get_fdb_table()
+    NETCONF: <get> state > service > vpls > fdb  (broad)
+             OR per-service: state > service > vpls > service-name <id> > fdb
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  # All services:
+  show service fdb-mac
+
+  # Specific service:
+  show service id <service-id> fdb detail
+
+  MD-CLI:
+  -------
+  /show service fdb-mac
+  /show service id <service-id> fdb detail
+
+
+================================================================================
+19. LIST ALL VPLS SERVICE IDs (for FDB iteration)
+    Source: netconf_lib/nokia_fdb.py -> _get_all_vpls_service_ids()
+    NETCONF: <get-config source="running"> configure > service > vpls
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show service service-using vpls
+
+  MD-CLI:
+  -------
+  /show service service-using vpls
+
+
+================================================================================
+20. LOG ENTRIES (Log ID 90 - Health Monitoring)
+    Source: netconf_lib/nokia_logs.py -> get_log_entries()
+    NETCONF: <get> state > log > log-id > name <90>
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show log log-id 90
+  show log log-id 90 count 100
+
+  MD-CLI:
+  -------
+  /show log log-id 90
+
+
+================================================================================
+21. INTERFACE SEARCH (combined query for fuzzy search)
+    Source: netconf_lib/nokia_interface_search.py -> build_interface_index()
+    NETCONF: Combines calls from #3, #5, and #6:
+             - get-config configure > port  (port descriptions)
+             - get state > port             (port state)
+             - get-config configure > lag    (LAG config)
+             - get state > lag              (LAG state)
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show port description
+  show port
+  show lag detail
+  show lag
+
+  MD-CLI:
+  -------
+  /show port description
+  /configure port info
+  /show lag
+
+
+================================================================================
+22. CHECK IF VPLS SERVICE EXISTS
+    Source: netconf_lib/nokia_vpls.py -> check_service_exists()
+    NETCONF: <get-config source="running"> configure > service > vpls >
+             service-id <id>
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show service id <service-id>
+  # Or:
+  show service service-using vpls | match <service-id>
+
+  MD-CLI:
+  -------
+  /show service id <service-id>
+
+
+================================================================================
+23. GET VPLS SERVICE STATUS (all services)
+    Source: netconf_lib/nokia_vpls.py -> get_vpls_status()
+    NETCONF: <get-config source="running"> configure > service > vpls
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  show service service-using vpls
+  admin display-config | match "vpls" context
+
+  MD-CLI:
+  -------
+  /show service service-using vpls
+  /configure service vpls info
+
+
+================================================================================
+24. CONFIG DIFF (Running vs Candidate)
+    Source: apps/debugging/views.py -> config_diff()
+    NETCONF: <get-config source="running"> configure  (full config)
+             <get-config source="candidate"> configure (full config)
+    Type: [READ]
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  admin display-config
+  # Compare with candidate:
+  admin display-config candidate
+
+  MD-CLI:
+  -------
+  /configure info
+  /configure info from candidate
+  # Or use built-in diff:
+  compare configure
+
+
+================================================================================
+================================================================================
+                        WRITE OPERATIONS (config changes)
+================================================================================
+================================================================================
+
+
+================================================================================
+25. CREATE VPLS SERVICE  [WRITE]
+    Source: netconf_lib/nokia_vpls.py -> create_vpls()
+    NETCONF: <edit-config target="candidate"> + <validate> + <commit>
+    Payload (from vpls_create.xml):
+      configure > service > vpls:
+        service-name, service-id, customer, description,
+        sap (sap-id = port:vlan), admin-state enable
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  configure service vpls <service-id> customer <customer-id> create
+      description "<description>"
+      sap <port>:<vlan> create
+      exit
+      no shutdown
+  exit
+
+  # With validation:
+  validate
+  # Normal commit:
+  commit
+  # Or commit confirmed (with 10 min rollback):
+  commit confirmed 10
+
+  MD-CLI:
+  -------
+  /configure service vpls <service-name> {
+      service-id <service-id>
+      customer <customer-id>
+      description "<description>"
+      sap <port>:<vlan> { }
+      admin-state enable
+  }
+  validate
+  commit
+  # Or:
+  commit confirmed <timeout-in-minutes>
+
+
+================================================================================
+26. DELETE VPLS SERVICE  [WRITE]
+    Source: netconf_lib/nokia_vpls.py -> delete_vpls()
+    NETCONF: <edit-config target="candidate" operation="delete"> + <validate>
+             + <commit>
+    Payload (from vpls_delete.xml):
+      configure > service > vpls (operation="delete") > service-id
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  configure service vpls <service-id> shutdown
+  configure service no vpls <service-id>
+  validate
+  commit
+
+  MD-CLI:
+  -------
+  /configure service delete vpls <service-name>
+  validate
+  commit
+
+
+================================================================================
+27. ADD SAP TO EXISTING VPLS  [WRITE]
+    Source: netconf_lib/nokia_vpls.py -> add_sap()
+    NETCONF: <edit-config target="candidate"> + <validate> + <commit>
+    Payload (from vpls_sap.xml):
+      configure > service > vpls > service-id > sap > sap-id (port:vlan)
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  configure service vpls <service-id>
+      sap <port>:<vlan> create
+      exit
+  exit
+  validate
+  commit
+
+  MD-CLI:
+  -------
+  /configure service vpls <service-name> sap <port>:<vlan> { }
+  validate
+  commit
+
+
+================================================================================
+28. CONFIRM PENDING COMMIT  [WRITE]
+    Source: netconf_lib/nokia_vpls.py -> confirm_commit()
+    NETCONF: <commit> (confirming commit to accept pending commit-confirmed)
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  commit confirmed accept
+
+  MD-CLI:
+  -------
+  commit confirmed accept
+
+
+================================================================================
+29. CANCEL/ROLLBACK PENDING COMMIT  [WRITE]
+    Source: netconf_lib/nokia_vpls.py -> cancel_commit()
+    NETCONF: <discard-changes> (triggers automatic rollback)
+================================================================================
+
+  CLI Equivalent:
+  ---------------
+  # Wait for timer to expire (auto-rollback)
+  # Or force immediate rollback:
+  admin rollback revert
+
+  MD-CLI:
+  -------
+  discard
+  # Or just wait for confirmed timer to expire
+
+
+================================================================================
+                              QUICK REFERENCE TABLE
+================================================================================
+
+  App Feature              | CLI Command                      | Type
+  -------------------------+----------------------------------+-------
+  Port state               | show port                        | READ
+  Port config/descriptions | show port description            | READ
+  LLDP neighbors           | show system lldp neighbor        | READ
+  LAG config               | show lag detail                  | READ
+  LAG state                | show lag                         | READ
+  LDP sessions             | show router ldp session          | READ
+  LDP bindings             | show router ldp bindings active  | READ
+  MPLS LSPs                | show router mpls lsp             | READ
+  Tunnel table             | show router tunnel-table         | READ
+  LSP path detail          | show router mpls lsp "<n>" path  | READ
+  BGP peers                | show router bgp summary          | READ
+  Route table              | show router route-table          | READ
+  System IP                | show router interface "system"   | READ
+  Port statistics          | show port statistics             | READ
+  SAP statistics           | show service id <n> sap stats    | READ
+  SDP list                 | show service sdp                 | READ
+  FDB table (all)          | show service fdb-mac             | READ
+  FDB table (per service)  | show service id <n> fdb detail   | READ
+  VPLS service list        | show service service-using vpls  | READ
+  Log entries              | show log log-id 90               | READ
+  Config diff              | compare configure                | READ
+  Check service exists     | show service id <n>              | READ
+  Create VPLS              | configure service vpls ... commit | WRITE
+  Delete VPLS              | no vpls <n> ... commit           | WRITE
+  Add SAP                  | vpls <n> sap ... commit          | WRITE
+  Confirm commit           | commit confirmed accept          | WRITE
+  Cancel commit            | admin rollback revert            | WRITE
+  -------------------------+----------------------------------+-------
+
+================================================================================
+  Notes:
+  - All NETCONF sessions connect on port 830 with device_params "alu"
+  - NETCONF uses candidate datastore for all write operations
+  - All read operations use <get> (state) or <get-config> (running config)
+  - ONLY VPLS operations (25-29) modify device configuration
+  - All other operations are strictly read-only
+================================================================================

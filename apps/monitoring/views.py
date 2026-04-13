@@ -107,17 +107,20 @@ def fdb_table(request):
     interfaces = []
     error = None
 
+    selected_service_id = request.GET.get("service_id", "").strip() or None
+
     if selected_device_id:
         device = get_object_or_404(Device, pk=selected_device_id)
         try:
             from netconf_lib.nokia_fdb import get_fdb_table
             from netconf_lib.nokia_interfaces import get_interfaces
 
-            fdb_result = get_fdb_table(device)
+            fdb_result = get_fdb_table(device, service_id=selected_service_id)
             iface_result = get_interfaces(device)
 
             entries = fdb_result.get("entries", [])
             interfaces = iface_result.get("interfaces", [])
+            services_found = fdb_result.get("services", [])
             error = fdb_result.get("error") or iface_result.get("error")
 
             # Build interface description lookup
@@ -128,12 +131,17 @@ def fdb_table(request):
 
         except Exception as e:
             error = str(e)
+            services_found = []
+    else:
+        services_found = []
 
     return render(request, "monitoring/fdb_table.html", {
         "devices": devices,
         "selected_device_id": selected_device_id,
+        "selected_service_id": selected_service_id or "",
         "entries": entries,
         "interfaces": interfaces,
+        "services_found": services_found,
         "error": error,
     })
 
@@ -142,11 +150,12 @@ def fdb_table(request):
 def fdb_table_ajax(request, pk):
     """AJAX endpoint for refreshing FDB table data."""
     device = get_object_or_404(Device, pk=pk)
+    service_id = request.GET.get("service_id", "").strip() or None
     try:
         from netconf_lib.nokia_fdb import get_fdb_table
         from netconf_lib.nokia_interfaces import get_interfaces
 
-        fdb_result = get_fdb_table(device)
+        fdb_result = get_fdb_table(device, service_id=service_id)
         iface_result = get_interfaces(device)
 
         entries = fdb_result.get("entries", [])
