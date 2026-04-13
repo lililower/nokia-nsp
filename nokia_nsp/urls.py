@@ -10,4 +10,6 @@ urlpatterns = [
     path("devices/", include("apps.devices.urls")),
     path("services/", include("apps.services.urls")),
     path("monitoring/", include("apps.monitoring.urls")),
+    path("topology/", include("apps.topology.urls")),
+    path("debug/", include("apps.debugging.urls")),
 ]

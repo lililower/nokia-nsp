@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}SAP Statistics - {{ device.name }} - Nokia NSP{% endblock %}
+{% block page_title %}SAP Statistics: {{ device.name }}{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h6 class="mb-0"><i class="bi bi-speedometer me-2"></i>SAP Ingress/Egress Counters</h6>
+    <div class="d-flex gap-2">
+      <form method="get" class="d-flex gap-2">
+        <input type="text" name="service_id" class="form-control form-control-sm" placeholder="Filter by Service ID..." value="{{ service_id_filter }}" style="width:180px;">
+        <button class="btn btn-sm btn-primary">Filter</button>
+      </form>
+      <select class="form-select form-select-sm" style="width:auto;" onchange="if(this.value) location.href='/debug/sap-stats/'+this.value+'/'">
+        {% for d in devices %}
+        <option value="{{ d.pk }}" {% if d.pk == device.pk %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" id="sapTable">
+      <thead class="table-light">
+        <tr>
+          <th>Service ID</th>
+          <th>SAP ID</th>
+          <th>Ingress Pkts</th>
+          <th>Ingress Octets</th>
+          <th>Egress Pkts</th>
+          <th>Egress Octets</th>
+          <th>Ingress Drops</th>
+          <th>Egress Drops</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sap in saps %}
+        <tr>
+          <td>{{ sap.service_id }}</td>
+          <td><code>{{ sap.sap_id }}</code></td>
+          <td>{{ sap.ingress_packets }}</td>
+          <td>{{ sap.ingress_octets }}</td>
+          <td>{{ sap.egress_packets }}</td>
+          <td>{{ sap.egress_octets }}</td>
+          <td>{% if sap.ingress_dropped > 0 %}<span class="text-danger fw-bold">{{ sap.ingress_dropped }}</span>{% else %}0{% endif %}</td>
+          <td>{% if sap.egress_dropped > 0 %}<span class="text-danger fw-bold">{{ sap.egress_dropped }}</span>{% else %}0{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-3">No SAP data found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="mt-3"><a href="{% url 'debug_hub' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to Tools</a></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>$(document).ready(function(){ $('#sapTable').DataTable({pageLength:25}); });</script>
+{% endblock %}

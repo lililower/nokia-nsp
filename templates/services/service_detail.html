@@ -14,6 +14,8 @@
           <span class="badge bg-success">Deployed</span>
         {% elif service.status == 'planned' %}
           <span class="badge bg-warning text-dark">Planned</span>
+        {% elif service.status == 'pending_confirm' %}
+          <span class="badge bg-info">Pending Confirmation</span>
         {% elif service.status == 'failed' %}
           <span class="badge bg-danger">Failed</span>
         {% elif service.status == 'deleted' %}
@@ -32,17 +34,71 @@
         </table>
       </div>
       {% if user.is_operator %}
-      <div class="card-footer d-flex gap-2">
-        {% if service.status == 'planned' or service.status == 'failed' %}
-        <form method="post" action="{% url 'service_deploy' service.pk %}">
+      <div class="card-footer">
+        {% if service.status == 'pending_confirm' %}
+        <!-- Pending confirmation actions -->
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-clock-history me-1"></i>
+          <strong>Commit Confirmed Active</strong> — Configuration will auto-rollback unless you accept.
+          Verify the changes are working correctly before confirming.
+        </div>
+        <div class="d-flex gap-2">
+          <form method="post" action="{% url 'service_confirm' service.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-sm"
+                    onclick="return confirm('Accept the commit? This makes the configuration permanent.')">
+              <i class="bi bi-check-circle me-1"></i>Confirm Accept
+            </button>
+          </form>
+          <form method="post" action="{% url 'service_cancel_confirm' service.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('Cancel and rollback the configuration?')">
+              <i class="bi bi-x-circle me-1"></i>Rollback Now
+            </button>
+          </form>
+        </div>
+
+        {% elif service.status == 'planned' or service.status == 'failed' %}
+        <!-- Deploy options -->
+        <form method="post" action="{% url 'service_deploy' service.pk %}" id="deployForm">
           {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Commit Mode</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="commit_mode" id="commitNormal"
+                     value="normal" checked onchange="toggleConfirmedOptions()">
+              <label class="form-check-label" for="commitNormal">
+                Normal Commit <small class="text-muted">— Apply immediately</small>
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="commit_mode" id="commitConfirmed"
+                     value="confirmed" onchange="toggleConfirmedOptions()">
+              <label class="form-check-label" for="commitConfirmed">
+                Commit Confirmed <small class="text-muted">— Auto-rollback if not accepted</small>
+              </label>
+            </div>
+          </div>
+          <div class="mb-3" id="confirmedOptions" style="display:none;">
+            <label for="confirmedTimeout" class="form-label">Rollback Timer (minutes)</label>
+            <select class="form-select form-select-sm" name="confirmed_timeout" id="confirmedTimeout" style="width:auto;">
+              <option value="300">5 minutes</option>
+              <option value="600" selected>10 minutes</option>
+              <option value="900">15 minutes</option>
+              <option value="1800">30 minutes</option>
+            </select>
+            <small class="text-muted d-block mt-1">
+              If you don't confirm within this time, the configuration will automatically rollback.
+            </small>
+          </div>
           <button type="submit" class="btn btn-success btn-sm"
                   onclick="return confirm('Deploy this service to all devices?')">
             <i class="bi bi-cloud-upload me-1"></i>Deploy
           </button>
         </form>
-        {% endif %}
-        {% if service.status == 'deployed' %}
+
+        {% elif service.status == 'deployed' %}
         <form method="post" action="{% url 'service_delete_deploy' service.pk %}">
           {% csrf_token %}
           <button type="submit" class="btn btn-danger btn-sm"
@@ -181,4 +237,13 @@
     <i class="bi bi-arrow-left me-1"></i>Back to Services
   </a>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleConfirmedOptions() {
+  const confirmed = document.getElementById('commitConfirmed').checked;
+  document.getElementById('confirmedOptions').style.display = confirmed ? 'block' : 'none';
+}
+</script>
 {% endblock %}

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Network Topology - Nokia NSP{% endblock %}
+{% block page_title %}Network Topology{% endblock %}
+
+{% block extra_css %}
+<style>
+  #topology-container {
+    width: 100%;
+    height: 600px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .375rem;
+    background: #fafafa;
+  }
+  .topology-legend .legend-item {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 16px;
+    font-size: 0.85em;
+  }
+  .legend-line {
+    display: inline-block;
+    width: 30px;
+    height: 3px;
+    margin-right: 6px;
+    border-radius: 2px;
+  }
+  .legend-line.dashed {
+    border-top: 3px dashed;
+    height: 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Controls -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="showPhysical" checked>
+          <label class="form-check-label" for="showPhysical">Physical</label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="showLDP" checked>
+          <label class="form-check-label" for="showLDP">LDP Tunnels</label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="showLSP" checked>
+          <label class="form-check-label" for="showLSP">MPLS LSPs</label>
+        </div>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <select class="form-select form-select-sm" id="deviceFilter" style="width: auto;">
+          <option value="">All Devices</option>
+          {% for device in devices %}
+          <option value="{{ device.pk }}">{{ device.name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-primary" id="refreshBtn">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" id="cachedBtn" title="Load last snapshot">
+          <i class="bi bi-clock-history me-1"></i>Cached
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-2 mb-3" id="statsRow" style="display:none;">
+  <div class="col"><div class="card border-0 bg-light text-center py-2"><strong id="statDevices">0</strong><br><small class="text-muted">Devices</small></div></div>
+  <div class="col"><div class="card border-0 bg-light text-center py-2"><strong id="statPhysical">0</strong><br><small class="text-muted">Physical Links</small></div></div>
+  <div class="col"><div class="card border-0 bg-light text-center py-2"><strong id="statLDP">0</strong><br><small class="text-muted">LDP Tunnels</small></div></div>
+  <div class="col"><div class="card border-0 bg-light text-center py-2"><strong id="statLSP">0</strong><br><small class="text-muted">MPLS LSPs</small></div></div>
+</div>
+
+<!-- Legend -->
+<div class="topology-legend mb-2">
+  <span class="legend-item"><span class="legend-line" style="background:#6c757d;"></span> Physical</span>
+  <span class="legend-item"><span class="legend-line dashed" style="border-color:#0d6efd;"></span> LDP Tunnel</span>
+  <span class="legend-item"><span class="legend-line dashed" style="border-color:#198754;"></span> MPLS LSP</span>
+  <span class="legend-item"><span style="display:inline-block;width:12px;height:12px;background:#198754;border-radius:50%;margin-right:4px;"></span> Online</span>
+  <span class="legend-item"><span style="display:inline-block;width:12px;height:12px;background:#dc3545;border-radius:50%;margin-right:4px;"></span> Offline</span>
+</div>
+
+<!-- Graph -->
+<div id="topology-container">
+  <div class="d-flex justify-content-center align-items-center h-100" id="loadingOverlay">
+    <div class="text-center">
+      <div class="spinner-border text-primary mb-2"></div>
+      <p class="text-muted">Click <strong>Refresh</strong> to poll devices and build topology...</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
+<script>
+var network = null;
+var allEdges = [];
+
+function initGraph(data) {
+  var container = document.getElementById('topology-container');
+  document.getElementById('loadingOverlay').style.display = 'none';
+
+  // Map group colors to vis.js
+  var nodeData = data.nodes.map(function(n) {
+    var color = '#adb5bd';
+    if (n.group === 'online') color = '#198754';
+    else if (n.group === 'offline') color = '#dc3545';
+    else if (n.group === 'error') color = '#ffc107';
+    return Object.assign({}, n, {
+      color: { background: color, border: color, highlight: { background: color, border: '#000' } },
+      shape: 'dot',
+      size: 25,
+      font: { color: '#333', size: 12 }
+    });
+  });
+
+  allEdges = data.edges;
+  var visibleEdges = filterEdges(allEdges);
+
+  var nodes = new vis.DataSet(nodeData);
+  var edges = new vis.DataSet(visibleEdges);
+
+  var options = {
+    physics: {
+      stabilization: { iterations: 150 },
+      barnesHut: { gravitationalConstant: -3000, centralGravity: 0.3, springLength: 200 }
+    },
+    interaction: { hover: true, tooltipDelay: 200 },
+    edges: { smooth: { type: 'continuous' } }
+  };
+
+  network = new vis.Network(container, { nodes: nodes, edges: edges }, options);
+
+  // Update stats
+  if (data.stats) {
+    document.getElementById('statsRow').style.display = 'flex';
+    document.getElementById('statDevices').textContent = data.stats.device_count || 0;
+    document.getElementById('statPhysical').textContent = data.stats.physical_links || 0;
+    document.getElementById('statLDP').textContent = data.stats.ldp_tunnels || 0;
+    document.getElementById('statLSP').textContent = data.stats.mpls_lsps || 0;
+  }
+}
+
+function filterEdges(edges) {
+  var showPhys = document.getElementById('showPhysical').checked;
+  var showLDP = document.getElementById('showLDP').checked;
+  var showLSP = document.getElementById('showLSP').checked;
+  return edges.filter(function(e) {
+    if (e.type === 'physical') return showPhys;
+    if (e.type === 'ldp') return showLDP;
+    if (e.type === 'lsp') return showLSP;
+    return true;
+  });
+}
+
+function refreshEdges() {
+  if (!network) return;
+  var filtered = filterEdges(allEdges);
+  network.setData({ nodes: network.body.data.nodes, edges: new vis.DataSet(filtered) });
+}
+
+function fetchTopology(cached) {
+  var url = '/topology/data/';
+  var params = [];
+  if (cached) params.push('cached=1');
+  var deviceId = document.getElementById('deviceFilter').value;
+  if (deviceId) params.push('device=' + deviceId);
+  if (params.length) url += '?' + params.join('&');
+
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  document.getElementById('loadingOverlay').innerHTML =
+    '<div class="text-center"><div class="spinner-border text-primary mb-2"></div>' +
+    '<p class="text-muted">Polling devices via NETCONF...</p></div>';
+
+  $.ajax({
+    url: url,
+    success: function(data) {
+      if (data.error) {
+        alert('Error: ' + data.error);
+        return;
+      }
+      initGraph(data);
+    },
+    error: function(xhr) {
+      document.getElementById('loadingOverlay').innerHTML =
+        '<div class="text-center text-danger"><i class="bi bi-exclamation-triangle fs-1"></i>' +
+        '<p>Failed to load topology</p></div>';
+    }
+  });
+}
+
+$(document).ready(function() {
+  $('#refreshBtn').click(function() { fetchTopology(false); });
+  $('#cachedBtn').click(function() { fetchTopology(true); });
+  $('#showPhysical, #showLDP, #showLSP').change(refreshEdges);
+});
+</script>
+{% endblock %}

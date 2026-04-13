@@ -49,6 +49,14 @@
             </a>
           </li>
           <li class="nav-item mt-2">
+            <small class="text-secondary px-3 text-uppercase">Network</small>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if 'topology' in request.resolver_match.url_name %}active bg-primary rounded{% endif %}" href="{% url 'topology_map' %}">
+              <i class="bi bi-diagram-3 me-2"></i>Topology Map
+            </a>
+          </li>
+          <li class="nav-item mt-2">
             <small class="text-secondary px-3 text-uppercase">Monitoring</small>
           </li>
           <li class="nav-item">
@@ -61,6 +69,34 @@
               <i class="bi bi-ethernet me-2"></i>Interfaces
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if 'health' in request.resolver_match.url_name %}active bg-primary rounded{% endif %}" href="{% url 'device_health' %}">
+              <i class="bi bi-heart-pulse me-2"></i>Device Health
+            </a>
+          </li>
+          <li class="nav-item mt-2">
+            <small class="text-secondary px-3 text-uppercase">Debugging</small>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if 'debug' in request.resolver_match.url_name %}active bg-primary rounded{% endif %}" href="{% url 'debug_hub' %}">
+              <i class="bi bi-tools me-2"></i>Debug Tools
+            </a>
+          </li>
+          {% if user.role == 'admin' %}
+          <li class="nav-item mt-2">
+            <small class="text-secondary px-3 text-uppercase">Administration</small>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.resolver_match.url_name == 'audit_log' %}active bg-primary rounded{% endif %}" href="{% url 'audit_log' %}">
+              <i class="bi bi-shield-check me-2"></i>Audit Log
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.resolver_match.url_name == 'user_list' %}active bg-primary rounded{% endif %}" href="{% url 'user_list' %}">
+              <i class="bi bi-people me-2"></i>Users
+            </a>
+          </li>
+          {% endif %}
         </ul>
       </nav>
       <div class="mt-auto p-3 border-top border-secondary position-absolute bottom-0" style="width:250px;">

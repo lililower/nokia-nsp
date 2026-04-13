@@ -1,11 +1,11 @@
-import json
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from apps.accounts.decorators import role_required
+from apps.accounts.models import AuditLog
 from .forms import DeviceForm
 from .models import Device
 
@@ -24,7 +24,14 @@ def device_create(request):
         if form.is_valid():
             device = form.save(commit=False)
             device.set_password(form.cleaned_data["password"])
+            device.credentials_updated_by = request.user
+            device.credentials_updated_at = timezone.now()
             device.save()
+            AuditLog.log(
+                request, "device_create",
+                f"Created device '{device.name}' ({device.hostname})",
+                target_object=f"Device:{device.pk}",
+            )
             messages.success(request, f"Device '{device.name}' added successfully.")
             return redirect("device_list")
     else:
@@ -43,6 +50,19 @@ def device_edit(request, pk):
             password = form.cleaned_data.get("password")
             if password:
                 device.set_password(password)
+                device.credentials_updated_by = request.user
+                device.credentials_updated_at = timezone.now()
+                AuditLog.log(
+                    request, "device_update",
+                    f"Updated device '{device.name}' credentials",
+                    target_object=f"Device:{device.pk}",
+                )
+            else:
+                AuditLog.log(
+                    request, "device_update",
+                    f"Updated device '{device.name}' (no credential change)",
+                    target_object=f"Device:{device.pk}",
+                )
             device.save()
             messages.success(request, f"Device '{device.name}' updated successfully.")
             return redirect("device_list")
@@ -57,6 +77,11 @@ def device_delete(request, pk):
     device = get_object_or_404(Device, pk=pk)
     if request.method == "POST":
         name = device.name
+        AuditLog.log(
+            request, "device_delete",
+            f"Deleted device '{name}' ({device.hostname})",
+            target_object=f"Device:{pk}",
+        )
         device.delete()
         messages.success(request, f"Device '{name}' deleted.")
         return redirect("device_list")

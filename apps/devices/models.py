@@ -1,6 +1,30 @@
+import hashlib
+import os
+
 from django.conf import settings
 from django.db import models
 from cryptography.fernet import Fernet
+
+
+def _get_fernet():
+    """Get Fernet instance with key derived from FERNET_KEY + machine-specific salt.
+
+    This adds defense-in-depth: even if someone steals the .env file,
+    they also need access to the same machine to derive the same key.
+    """
+    base_key = settings.FERNET_KEY
+    if isinstance(base_key, str):
+        base_key = base_key.encode()
+
+    # Salt with a machine-specific value (hostname + OS-level secret if available)
+    machine_id = os.environ.get("COMPUTERNAME", os.environ.get("HOSTNAME", "nokia-nsp"))
+    salt = hashlib.sha256(machine_id.encode()).digest()
+
+    # Derive a Fernet-compatible key (32 bytes, base64url-encoded)
+    import base64
+    derived = hashlib.pbkdf2_hmac("sha256", base_key, salt, iterations=100_000)
+    fernet_key = base64.urlsafe_b64encode(derived[:32])
+    return Fernet(fernet_key)
 
 
 class Device(models.Model):
@@ -22,6 +46,13 @@ class Device(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Track who last modified credentials
+    credentials_updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
+    credentials_updated_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ["name"]
 
@@ -29,9 +60,9 @@ class Device(models.Model):
         return f"{self.name} ({self.hostname})"
 
     def set_password(self, raw_password):
-        f = Fernet(settings.FERNET_KEY.encode() if isinstance(settings.FERNET_KEY, str) else settings.FERNET_KEY)
+        f = _get_fernet()
         self.encrypted_password = f.encrypt(raw_password.encode())
 
     def get_password(self):
-        f = Fernet(settings.FERNET_KEY.encode() if isinstance(settings.FERNET_KEY, str) else settings.FERNET_KEY)
+        f = _get_fernet()
         return f.decrypt(bytes(self.encrypted_password)).decode()

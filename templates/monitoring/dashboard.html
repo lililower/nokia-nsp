@@ -84,26 +84,40 @@
               <th>Hostname</th>
               <th>Platform</th>
               <th>Status</th>
+              <th>Health</th>
             </tr>
           </thead>
           <tbody>
-            {% for device in devices %}
+            {% for item in devices_with_health %}
             <tr>
-              <td><a href="{% url 'device_detail' device.pk %}">{{ device.name }}</a></td>
-              <td>{{ device.hostname }}</td>
-              <td>{{ device.platform }}</td>
+              <td><a href="{% url 'device_detail' item.device.pk %}">{{ item.device.name }}</a></td>
+              <td>{{ item.device.hostname }}</td>
+              <td>{{ item.device.platform }}</td>
               <td>
-                {% if device.status == 'online' %}
+                {% if item.device.status == 'online' %}
                   <span class="badge bg-success">Online</span>
-                {% elif device.status == 'offline' %}
+                {% elif item.device.status == 'offline' %}
                   <span class="badge bg-danger">Offline</span>
                 {% else %}
                   <span class="badge bg-secondary">Unknown</span>
                 {% endif %}
               </td>
+              <td>
+                {% if item.health %}
+                  {% if item.health.score >= 80 %}
+                    <a href="{% url 'device_health_detail' item.device.pk %}"><span class="badge bg-success">{{ item.health.score }}/100</span></a>
+                  {% elif item.health.score >= 50 %}
+                    <a href="{% url 'device_health_detail' item.device.pk %}"><span class="badge bg-warning text-dark">{{ item.health.score }}/100</span></a>
+                  {% else %}
+                    <a href="{% url 'device_health_detail' item.device.pk %}"><span class="badge bg-danger">{{ item.health.score }}/100</span></a>
+                  {% endif %}
+                {% else %}
+                  <span class="badge bg-secondary">—</span>
+                {% endif %}
+              </td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" class="text-center text-muted py-3">No devices added yet.</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-3">No devices added yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>

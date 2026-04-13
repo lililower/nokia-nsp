@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}MPLS Path Tracer - {{ device.name }} - Nokia NSP{% endblock %}
+{% block page_title %}MPLS Path Tracer: {{ device.name }}{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h6 class="mb-0"><i class="bi bi-bezier2 me-2"></i>Select LSP to Trace</h6>
+    <select class="form-select form-select-sm" style="width:auto;" onchange="if(this.value) location.href='/debug/mpls-trace/'+this.value+'/'">
+      {% for d in devices %}
+      <option value="{{ d.pk }}" {% if d.pk == device.pk %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="card-body">
+    <form method="get" class="d-flex gap-2 align-items-end">
+      <div>
+        <label class="form-label">LSP Name</label>
+        <select name="lsp" class="form-select form-select-sm" style="width:300px;">
+          <option value="">-- Select an LSP --</option>
+          {% for l in lsps %}
+          <option value="{{ l.lsp_name }}" {% if l.lsp_name == lsp_name %}selected{% endif %}>
+            {{ l.lsp_name }} ({{ l.oper_state }}) → {{ l.to_address }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-sm btn-primary">Trace</button>
+    </form>
+  </div>
+</div>
+
+{% if selected_lsp %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header"><h6 class="mb-0">LSP: {{ selected_lsp.lsp_name }}</h6></div>
+  <div class="card-body">
+    <div class="row g-3 mb-3">
+      <div class="col-md-3"><strong>From:</strong> <code>{{ selected_lsp.from_address }}</code></div>
+      <div class="col-md-3"><strong>To:</strong> <code>{{ selected_lsp.to_address }}</code></div>
+      <div class="col-md-2"><strong>State:</strong>
+        {% if selected_lsp.oper_state == 'up' %}
+          <span class="badge bg-success">Up</span>
+        {% else %}
+          <span class="badge bg-danger">{{ selected_lsp.oper_state }}</span>
+        {% endif %}
+      </div>
+      <div class="col-md-2"><strong>Metric:</strong> {{ selected_lsp.metric|default:"—" }}</div>
+    </div>
+
+    <!-- Path visualization -->
+    <h6 class="mb-2">Path Hops</h6>
+    {% if selected_lsp.path_hops %}
+    <div class="d-flex align-items-center flex-wrap gap-1 mb-3">
+      <span class="badge bg-primary p-2">{{ selected_lsp.from_address }}</span>
+      {% for hop in selected_lsp.path_hops %}
+      <i class="bi bi-arrow-right text-muted"></i>
+      <span class="badge bg-info p-2">{{ hop }}</span>
+      {% endfor %}
+      <i class="bi bi-arrow-right text-muted"></i>
+      <span class="badge bg-success p-2">{{ selected_lsp.to_address }}</span>
+    </div>
+    {% else %}
+    <p class="text-muted">No hop information available.</p>
+    {% endif %}
+
+    <!-- Statistics -->
+    <div class="row g-2">
+      <div class="col-auto"><div class="card bg-light border-0 px-3 py-2 text-center"><strong>{{ selected_lsp.forwarded_packets|default:0 }}</strong><br><small class="text-muted">Fwd Packets</small></div></div>
+      <div class="col-auto"><div class="card bg-light border-0 px-3 py-2 text-center"><strong>{{ selected_lsp.forwarded_octets|default:0 }}</strong><br><small class="text-muted">Fwd Octets</small></div></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- All LSPs table -->
+<div class="card shadow-sm">
+  <div class="card-header"><h6 class="mb-0">All MPLS LSPs</h6></div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" id="lspTable">
+      <thead class="table-light">
+        <tr><th>LSP Name</th><th>From</th><th>To</th><th>State</th><th>Metric</th><th>Fwd Packets</th><th>Fwd Octets</th></tr>
+      </thead>
+      <tbody>
+        {% for l in lsps %}
+        <tr>
+          <td><a href="?lsp={{ l.lsp_name }}">{{ l.lsp_name }}</a></td>
+          <td><code>{{ l.from_address }}</code></td>
+          <td><code>{{ l.to_address }}</code></td>
+          <td>
+            {% if l.oper_state == 'up' %}
+              <span class="badge bg-success">Up</span>
+            {% else %}
+              <span class="badge bg-danger">{{ l.oper_state }}</span>
+            {% endif %}
+          </td>
+          <td>{{ l.metric|default:"—" }}</td>
+          <td>{{ l.forwarded_packets }}</td>
+          <td>{{ l.forwarded_octets }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-3">No LSPs found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="mt-3"><a href="{% url 'debug_hub' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to Tools</a></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>$(document).ready(function(){ $('#lspTable').DataTable({paging:false,info:false}); });</script>
+{% endblock %}

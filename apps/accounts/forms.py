@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
 
 from .models import User
 
@@ -14,9 +14,15 @@ class LoginForm(AuthenticationForm):
 
 
 class UserCreateForm(UserCreationForm):
+    force_password_change = forms.BooleanField(
+        required=False, initial=True,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        help_text="Require user to change password on first login.",
+    )
+
     class Meta:
         model = User
-        fields = ("username", "email", "first_name", "last_name", "role")
+        fields = ("username", "email", "first_name", "last_name", "role", "force_password_change")
         widgets = {
             "username": forms.TextInput(attrs={"class": "form-control"}),
             "email": forms.EmailInput(attrs={"class": "form-control"}),
@@ -29,6 +35,14 @@ class UserCreateForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         self.fields["password1"].widget.attrs.update({"class": "form-control"})
         self.fields["password2"].widget.attrs.update({"class": "form-control"})
+
+
+class ChangePasswordForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["old_password"].widget.attrs.update({"class": "form-control"})
+        self.fields["new_password1"].widget.attrs.update({"class": "form-control"})
+        self.fields["new_password2"].widget.attrs.update({"class": "form-control"})
 
 
 class ProfileForm(forms.ModelForm):

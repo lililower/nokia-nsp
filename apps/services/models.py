@@ -6,6 +6,7 @@ class VPLSService(models.Model):
     STATUS_CHOICES = [
         ("planned", "Planned"),
         ("deployed", "Deployed"),
+        ("pending_confirm", "Pending Confirmation"),
         ("failed", "Failed"),
         ("deleted", "Deleted"),
     ]

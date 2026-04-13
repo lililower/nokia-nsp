@@ -27,6 +27,8 @@ INSTALLED_APPS = [
     "apps.devices",
     "apps.services",
     "apps.monitoring",
+    "apps.topology",
+    "apps.debugging",
 ]
 
 MIDDLEWARE = [
@@ -37,6 +39,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.accounts.middleware.ForcePasswordChangeMiddleware",
 ]
 
 ROOT_URLCONF = "nokia_nsp.urls"
@@ -69,13 +72,6 @@ DATABASES = {
 
 AUTH_USER_MODEL = "accounts.User"
 
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-]
-
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -93,3 +89,27 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 # Fernet encryption key for device passwords
 FERNET_KEY = os.getenv("FERNET_KEY", "")
+
+# --- Security Settings ---
+
+# Session expires after 30 minutes of inactivity
+SESSION_COOKIE_AGE = 1800
+SESSION_SAVE_EVERY_REQUEST = True  # Reset timer on every request
+
+# Secure cookie settings (enable in production with HTTPS)
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+
+# Password validation (enforced for local accounts)
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 10}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]

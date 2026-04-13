@@ -1,8 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.accounts.decorators import role_required
+from apps.accounts.models import AuditLog
 from .forms import SAPForm, VPLSServiceForm
 from .models import DeploymentLog, ServiceSAP, VPLSService
 
@@ -40,6 +42,11 @@ def service_create(request):
                         vlan=sf.cleaned_data["vlan"],
                     )
 
+            AuditLog.log(
+                request, "service_create",
+                f"Created VPLS service '{service.name}' (ID: {service.service_id})",
+                target_object=f"VPLSService:{service.pk}",
+            )
             messages.success(request, f"VPLS service '{service.name}' created.")
             return redirect("service_detail", pk=service.pk)
     else:
@@ -67,11 +74,32 @@ def service_deploy(request, pk):
     if request.method != "POST":
         return redirect("service_detail", pk=pk)
 
+    commit_mode = request.POST.get("commit_mode", "normal")
+    confirmed_timeout = int(request.POST.get("confirmed_timeout", 600))
+
+    # Pre-deploy check: verify service ID doesn't already exist on devices
+    from netconf_lib.nokia_vpls import check_service_exists, create_vpls
+
+    conflicts = []
+    for device in service.devices.all():
+        try:
+            if check_service_exists(device, service.service_id):
+                conflicts.append(device.name)
+        except Exception:
+            pass
+
+    if conflicts:
+        messages.warning(
+            request,
+            f"Service ID {service.service_id} already exists on: {', '.join(conflicts)}. "
+            f"Deployment aborted. Use a different service ID or remove the existing service first."
+        )
+        return redirect("service_detail", pk=pk)
+
     results = []
     for device in service.devices.all():
         saps = [{"port": s.port, "vlan": s.vlan} for s in service.saps.filter(device=device)]
         try:
-            from netconf_lib.nokia_vpls import create_vpls
             result = create_vpls(
                 device=device,
                 service_id=service.service_id,
@@ -79,6 +107,8 @@ def service_deploy(request, pk):
                 customer_id=service.customer_id,
                 saps=saps,
                 description=service.description,
+                commit_mode=commit_mode,
+                confirmed_timeout=confirmed_timeout,
             )
         except Exception as e:
             result = {"status": "failed", "config_sent": "", "response": str(e)}
@@ -89,6 +119,67 @@ def service_deploy(request, pk):
             action="create",
             config_sent=result.get("config_sent", ""),
             response=result.get("response", ""),
+            status="success" if result["status"] in ("success", "pending_confirm") else "failed",
+            deployed_by=request.user,
+        )
+        results.append((device.name, result["status"]))
+
+    success_count = sum(1 for _, s in results if s in ("success", "pending_confirm"))
+    pending_count = sum(1 for _, s in results if s == "pending_confirm")
+    total = len(results)
+
+    if success_count == total and total > 0:
+        if pending_count > 0:
+            service.status = "pending_confirm"
+            timeout_min = confirmed_timeout // 60
+            messages.warning(
+                request,
+                f"Deployment pending confirmation: {success_count}/{total} devices. "
+                f"Auto-rollback in {timeout_min} minutes unless you confirm."
+            )
+        else:
+            service.status = "deployed"
+            messages.success(request, f"Deployment complete: {success_count}/{total} devices succeeded.")
+    elif success_count == 0:
+        service.status = "failed"
+        messages.error(request, f"Deployment failed on all {total} devices.")
+    else:
+        service.status = "failed"
+        messages.error(request, f"Deployment partial failure: {success_count}/{total} devices succeeded.")
+    service.save()
+
+    AuditLog.log(
+        request, "deploy",
+        f"Deployed VPLS {service.service_id} ({commit_mode}): {success_count}/{total} succeeded",
+        target_object=f"VPLSService:{service.pk}",
+    )
+
+    return redirect("service_detail", pk=pk)
+
+
+@login_required
+@role_required("operator")
+def service_confirm(request, pk):
+    """Confirm a pending commit confirmed deployment."""
+    service = get_object_or_404(VPLSService, pk=pk)
+    if request.method != "POST":
+        return redirect("service_detail", pk=pk)
+
+    from netconf_lib.nokia_vpls import confirm_commit
+
+    results = []
+    for device in service.devices.all():
+        try:
+            result = confirm_commit(device)
+        except Exception as e:
+            result = {"status": "failed", "response": str(e)}
+
+        DeploymentLog.objects.create(
+            service=service,
+            device=device,
+            action="confirm",
+            config_sent="commit confirmed accept",
+            response=result.get("response", ""),
             status=result["status"],
             deployed_by=request.user,
         )
@@ -96,15 +187,58 @@ def service_deploy(request, pk):
 
     success_count = sum(1 for _, s in results if s == "success")
     total = len(results)
+
     if success_count == total and total > 0:
         service.status = "deployed"
-    elif success_count == 0:
-        service.status = "failed"
+        messages.success(request, f"Commit confirmed accepted on {success_count}/{total} devices.")
     else:
         service.status = "failed"
+        messages.error(request, f"Confirm failed: {success_count}/{total} devices succeeded.")
     service.save()
 
-    messages.info(request, f"Deployment complete: {success_count}/{total} devices succeeded.")
+    AuditLog.log(
+        request, "deploy_confirm",
+        f"Confirmed deploy VPLS {service.service_id}: {success_count}/{total} accepted",
+        target_object=f"VPLSService:{service.pk}",
+    )
+
+    return redirect("service_detail", pk=pk)
+
+
+@login_required
+@role_required("operator")
+def service_cancel_confirm(request, pk):
+    """Cancel a pending commit confirmed (triggers rollback)."""
+    service = get_object_or_404(VPLSService, pk=pk)
+    if request.method != "POST":
+        return redirect("service_detail", pk=pk)
+
+    from netconf_lib.nokia_vpls import cancel_commit
+
+    for device in service.devices.all():
+        try:
+            result = cancel_commit(device)
+        except Exception as e:
+            result = {"status": "failed", "response": str(e)}
+
+        DeploymentLog.objects.create(
+            service=service,
+            device=device,
+            action="rollback",
+            config_sent="discard changes (rollback)",
+            response=result.get("response", ""),
+            status=result["status"],
+            deployed_by=request.user,
+        )
+
+    service.status = "planned"
+    service.save()
+    AuditLog.log(
+        request, "deploy_rollback",
+        f"Rolled back VPLS {service.service_id} on all devices",
+        target_object=f"VPLSService:{service.pk}",
+    )
+    messages.info(request, f"Commit cancelled. Configuration rolled back on all devices.")
     return redirect("service_detail", pk=pk)
 
 
@@ -135,6 +269,11 @@ def service_delete_deploy(request, pk):
 
     service.status = "deleted"
     service.save()
+    AuditLog.log(
+        request, "deploy_delete",
+        f"Deleted VPLS {service.service_id} ('{service.name}') from all devices",
+        target_object=f"VPLSService:{service.pk}",
+    )
     messages.success(request, f"Delete config sent for VPLS '{service.name}'.")
     return redirect("service_list")
 
@@ -143,3 +282,17 @@ def service_delete_deploy(request, pk):
 def deployment_logs(request):
     logs = DeploymentLog.objects.select_related("service", "device", "deployed_by").all()[:100]
     return render(request, "services/deployment_logs.html", {"logs": logs})
+
+
+@login_required
+def interface_search_ajax(request, pk):
+    """AJAX endpoint: search interfaces/LAGs by description or ID on a device."""
+    from apps.devices.models import Device
+    device = get_object_or_404(Device, pk=pk)
+    query = request.GET.get("q", "")
+    try:
+        from netconf_lib.nokia_interface_search import search_interfaces
+        results = search_interfaces(device, query)
+        return JsonResponse({"results": results})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

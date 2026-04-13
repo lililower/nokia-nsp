@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Debugging Tools - Nokia NSP{% endblock %}
+{% block page_title %}Debugging Tools{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <label class="form-label fw-semibold">Select Device</label>
+  <select class="form-select" id="deviceSelect" style="max-width:400px;">
+    <option value="">Choose a device...</option>
+    {% for device in devices %}
+    <option value="{{ device.pk }}">{{ device.name }} ({{ device.hostname }})</option>
+    {% endfor %}
+  </select>
+</div>
+
+<div class="row g-3" id="toolCards">
+  {% with tools="bgp:bi-diagram-2:BGP Peers:View BGP neighbor status and route counts,routes:bi-signpost:Route Table:Browse IPv4 unicast route table with prefix search,ldp:bi-arrow-left-right:LDP Sessions:View LDP sessions and FEC-to-label bindings,mpls-trace:bi-bezier2:MPLS Path Tracer:Trace LSP paths hop-by-hop with statistics,sap-stats:bi-speedometer:SAP Statistics:View ingress/egress packet and byte counters per SAP,sdp:bi-link-45deg:SDP Bindings:Service Distribution Points and their service bindings,port-util:bi-bar-chart-line:Port Utilization:Port traffic counters errors and utilization,config-diff:bi-file-diff:Config Diff:Compare running vs candidate configuration" %}
+  {% for tool in tools.split %}
+  {% with parts=tool.split %}
+  {% endwith %}
+  {% endfor %}
+  {% endwith %}
+
+  <div class="col-md-4 col-lg-3 tool-card" data-url="debug_bgp">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-diagram-2 fs-1 text-primary mb-2 d-block"></i>
+        <h6>BGP Peers</h6>
+        <small class="text-muted">View BGP neighbor status, received/sent/active route counts</small>
+      </div>
+      <div class="card-footer bg-transparent text-center">
+        <a href="#" class="btn btn-sm btn-outline-primary tool-link" data-base-url="{% url 'debug_bgp' 9999 %}">Open</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-lg-3 tool-card">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-signpost fs-1 text-success mb-2 d-block"></i>
+        <h6>Route Table</h6>
+        <small class="text-muted">Browse IPv4 unicast route table with prefix search</small>
+      </div>
+      <div class="card-footer bg-transparent text-center">
+        <a href="#" class="btn btn-sm btn-outline-primary tool-link" data-base-url="{% url 'debug_routes' 9999 %}">Open</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-lg-3 tool-card">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-arrow-left-right fs-1 text-info mb-2 d-block"></i>
+        <h6>LDP Sessions</h6>
+        <small class="text-muted">View LDP sessions, bindings, and label statistics</small>
+      </div>
+      <div class="card-footer bg-transparent text-center">
+        <a href="#" class="btn btn-sm btn-outline-primary tool-link" data-base-url="{% url 'debug_ldp' 9999 %}">Open</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-lg-3 tool-card">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-bezier2 fs-1 text-warning mb-2 d-block"></i>
+        <h6>MPLS Path Tracer</h6>
+        <small class="text-muted">Trace LSP paths hop-by-hop with forwarding statistics</small>
+      </div>
+      <div class="card-footer bg-transparent text-center">
+        <a href="#" class="btn btn-sm btn-outline-primary tool-link" data-base-url="{% url 'debug_mpls_trace' 9999 %}">Open</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-lg-3 tool-card">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-speedometer fs-1 text-danger mb-2 d-block"></i>
+        <h6>SAP Statistics</h6>
+        <small class="text-muted">Ingress/egress packet and byte counters per SAP</small>
+      </div>
+      <div class="card-footer bg-transparent text-center">
+        <a href="#" class="btn btn-sm btn-outline-primary tool-link" data-base-url="{% url 'debug_sap_stats' 9999 %}">Open</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-lg-3 tool-card">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-link-45deg fs-1 text-secondary mb-2 d-block"></i>
+        <h6>SDP Bindings</h6>
+        <small class="text-muted">Service Distribution Points and service bindings</small>
+      </div>
+      <div class="card-footer bg-transparent text-center">
+        <a href="#" class="btn btn-sm btn-outline-primary tool-link" data-base-url="{% url 'debug_sdp' 9999 %}">Open</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-lg-3 tool-card">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-bar-chart-line fs-1 text-primary mb-2 d-block"></i>
+        <h6>Port Utilization</h6>
+        <small class="text-muted">Port traffic counters, errors, and discard rates</small>
+      </div>
+      <div class="card-footer bg-transparent text-center">
+        <a href="#" class="btn btn-sm btn-outline-primary tool-link" data-base-url="{% url 'debug_port_util' 9999 %}">Open</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-lg-3 tool-card">
+    <div class="card shadow-sm h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-file-diff fs-1 text-success mb-2 d-block"></i>
+        <h6>Config Diff</h6>
+        <small class="text-muted">Compare running vs candidate configuration</small>
+      </div>
+      <div class="card-footer bg-transparent text-center">
+        <a href="#" class="btn btn-sm btn-outline-primary tool-link" data-base-url="{% url 'debug_config_diff' 9999 %}">Open</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  $('#deviceSelect').change(function() {
+    var pk = $(this).val();
+    $('.tool-link').each(function() {
+      if (pk) {
+        $(this).attr('href', $(this).data('base-url').replace('9999', pk))
+               .removeClass('disabled');
+      } else {
+        $(this).attr('href', '#').addClass('disabled');
+      }
+    });
+  });
+  // Init: disable links
+  $('.tool-link').addClass('disabled').attr('href', '#');
+});
+</script>
+{% endblock %}
